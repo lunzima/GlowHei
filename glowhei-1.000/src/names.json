@@ -1,0 +1,17 @@
+{
+  "version": "1.000",
+  "vendor_id": "LNZM",
+  "project_url": "https://github.com/lunzima/GlowHei",
+  "legal": {
+    "copyright": "Copyright 2026 The GlowHei Authors (https://github.com/lunzima/GlowHei). Portions copyright Belleve Invis and other contributors, with Reserved Font Name 'Sarasa'.",
+    "licence": "This Font Software is licensed under the SIL Open Font License, Version 1.1. This licence is available with a FAQ at https://openfontlicense.org",
+    "licence_url": "https://openfontlicense.org"
+  },
+  "faces": {
+    "GlowHei-Regular":       {"0804": "星霞黑体"},
+    "GlowHeiMono-Regular":   {"0804": "星霞黑体 Mono"},
+    "GlowHeiGB-Regular":     {"0804": "星霞黑体 GB"},
+    "GlowHeiGBMono-Regular": {"0804": "星霞黑体 GB Mono"},
+    "GlowHeiExtA-Regular":   {"0804": "星霞黑体 ExtA"}
+  }
+}
