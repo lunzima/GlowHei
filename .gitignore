@@ -1,8 +1,11 @@
-# Build products, not sources.
+# Build products, not sources. The fonts themselves are sources as far as this
+# tree is concerned: they are what the repository is for, and the sibling
+# project carries its own the same way. What stays out is anything a reader
+# produces locally from them.
 sbitgraft-*/sbitgraft
 sbitgraft-*/*.o
 sbitgraft-*/*.exe
-glowhei-*/*.ttc
-glowhei-*/*.ttf
+*-nohint.ttc
+*-nohint.ttf
 __pycache__/
 *.pyc
