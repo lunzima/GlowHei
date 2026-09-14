@@ -18,6 +18,9 @@
 
 整份为 SIL OFL 1.1，全文见 `LICENSE`，上游声明也在其中。
 
+字体的 `fpgm` 表内含 Chlorophytum 的运行时函数库，该工具为 MIT，全文见
+`LICENSE-MIT`。
+
 fontconfig 配置 `65-glowhei.conf` 与自查脚本 `check-fontconfig.sh` 不在这份下载
 里，它们在发布页的根目录——装不装字体都用得上，因此没有跟着字体走。
 
