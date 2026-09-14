@@ -40,6 +40,7 @@ Needs Node and a set of npm packages inside WSL.
 Without them the step is skipped and the font ships unhinted, which is correct
 but softer at small sizes.
 """
+import hashlib
 import io
 import subprocess
 import tempfile
@@ -84,9 +85,31 @@ def wsl_path(path: Path) -> str:
     return f"/mnt/{drive}{rest}"
 
 
-def _wsl(script: str, timeout: int = 120) -> subprocess.CompletedProcess:
-    return subprocess.run(["wsl", "-e", "bash", "-lc", script],
-                          capture_output=True, timeout=timeout)
+def _wsl(script: str, timeout: int = 120,
+         log: Path | None = None) -> subprocess.CompletedProcess:
+    """Run `script` inside WSL. With `log`, output goes to that file.
+
+    The long steps take a log rather than a pipe. Chlorophytum prints a
+    progress line per percent for an hour, and holding all of that in the
+    parent's memory buys nothing: nobody reads it unless the step fails, and
+    then a file is more use than a truncated repr. It also leaves something to
+    look at while the step is still running.
+    """
+    command = ["wsl", "-e", "bash", "-lc", script]
+    if log is None:
+        return subprocess.run(command, capture_output=True, timeout=timeout)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("wb") as handle:
+        return subprocess.run(command, stdout=handle, stderr=subprocess.STDOUT,
+                              timeout=timeout)
+
+
+def _tail(log: Path, limit: int = 800) -> str:
+    """The end of a log, for an error message."""
+    try:
+        return log.read_bytes()[-limit:].decode("utf-8", errors="replace")
+    except OSError:
+        return "(no log)"
 
 
 def available() -> bool:
@@ -204,11 +227,38 @@ def _merge(font: TTFont, carrier: TTFont, sources: list) -> TTFont:
     return merged
 
 
-def _run(script: str, what: str) -> None:
-    result = _wsl(script, timeout=TIMEOUT)
+def _cache_for(font: TTFont) -> Path:
+    """One cache file per charset. Not one for all of them, and this is why.
+
+    The cache is keyed by a hash of each glyph's geometry, so in principle
+    every product could share one: the ideographs the full build analysed
+    would come free to the others. Chlorophytum does not keep it that way.
+    Its `save` writes back only the entries the run touched - what it hit plus
+    what it newly computed - so a build replaces the file rather than adding
+    to it. Measured: after the Ext A target the file held 6,580 entries,
+    exactly Ext A's glyph count, and the 20,925 from the GBK build before it
+    were gone. The next full-charset build then analysed all of them again,
+    three hours of work that a cache exists to avoid.
+
+    Splitting by charset means a file is only ever read and written by builds
+    that cover the same glyphs, so nothing gets thrown away. Two products over
+    one charset - the collection and the hint-free base - share theirs and the
+    second is nearly free.
+
+    The name is a digest of the codepoints rather than the product's name:
+    what decides whether a cache is usable is the coverage, not what the
+    caller chose to call it.
+    """
+    covered = ",".join(f"{cp:X}" for cp in sorted(font.getBestCmap()))
+    digest = hashlib.sha1(covered.encode("ascii")).hexdigest()[:12]
+    return WORK / f"chlorophytum-cache-{digest}.gz"
+
+
+def _run(script: str, what: str, log: Path) -> None:
+    result = _wsl(script, timeout=TIMEOUT, log=log)
     if result.returncode != 0:
-        raise RuntimeError(f"{what} failed (rc={result.returncode}): "
-                           f"{result.stderr[-400:]!r}")
+        raise RuntimeError(f"{what} failed (rc={result.returncode}), "
+                           f"log at {log}:\n{_tail(log)}")
 
 
 def apply(font: TTFont, workdir: Path | None = None,
@@ -231,9 +281,7 @@ def apply(font: TTFont, workdir: Path | None = None,
     """
     work = Path(workdir or tempfile.mkdtemp(prefix=TEMP_PREFIX))
     work.mkdir(parents=True, exist_ok=True)
-    # Keyed by glyph, so the three products share one cache: whatever the GBK
-    # build analysed, the GB2312 build gets for free.
-    cache = Path(cache) if cache else WORK / "chlorophytum-cache.gz"
+    cache = Path(cache) if cache else _cache_for(font)
     cache.parent.mkdir(parents=True, exist_ok=True)
     _place_config()
 
@@ -248,7 +296,8 @@ def apply(font: TTFont, workdir: Path | None = None,
         plain = work / "hint_letters_plain.ttf"
         _cut(font, letters, plain)
         tuned = work / "hint_letters.ttf"
-        _run(f"ttfautohint {wsl_path(plain)} {wsl_path(tuned)}", "ttfautohint")
+        _run(f"ttfautohint {wsl_path(plain)} {wsl_path(tuned)}",
+             "ttfautohint", work / "ttfautohint.log")
         pieces.append((tuned, work / "hint_letters.gz",
                        work / "hint_letters_out.ttf"))
 
@@ -264,6 +313,7 @@ def apply(font: TTFont, workdir: Path | None = None,
         f"node {CLI} hint -c hcfg.json -h {wsl_path(cache)} -j {jobs} {pairs} && "
         f"node {CLI} instruct -c hcfg.json {triples}",
         "Chlorophytum",
+        work / "chlorophytum.log",
     )
     missing = [str(o) for _, _, o in pieces if not o.exists()]
     if missing:
