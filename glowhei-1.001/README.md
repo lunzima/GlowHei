@@ -51,8 +51,8 @@ ttfautohint——两套工具各自处理它有模型的那部分，在各自的
 只在大字号用字、或要把字体嵌进文档而在意体积，可以去掉：
 
 ```sh
-make -C ../sbitgraft-1.000
-../sbitgraft-1.000/sbitgraft --strip GlowHei-GBK.ttc GlowHei-GBK-nohint.ttc
+make -C ../sbitgraft-1.001
+../sbitgraft-1.001/sbitgraft --strip GlowHei-GBK.ttc GlowHei-GBK-nohint.ttc
 ```
 
 轮廓、度量、字符映射与命名都不会被改动。
