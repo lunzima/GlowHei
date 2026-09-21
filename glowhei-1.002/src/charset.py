@@ -49,6 +49,20 @@ def cp936_codepoints() -> frozenset[int]:
 
 _TABULAR = frozenset(BOX_DRAWING) | frozenset(BLOCK_ELEMENTS)
 
+# Characters the codec enumeration above cannot see, named by hand.
+#
+# The euro is the only one. CP936 carries it in a **single** byte, 0x80, but
+# Python's cp936 codec rejects that byte instead of decoding it, so enumerating
+# the codec never reaches the character and nothing about it is implied by the
+# tables above. It has to be added to both builds explicitly.
+#
+# It is half width: a single byte is the test this project decides a width by,
+# and it is what the source draws too. Sarasa Fixed gives the euro the same 500
+# units it gives ASCII, against the Han 1000, so it is half width here before
+# this charset names it.
+EURO = 0x20AC
+CP936_EXTRA = frozenset({EURO})
+
 
 @lru_cache(maxsize=None)
 def slim() -> frozenset[int]:
@@ -59,14 +73,17 @@ def slim() -> frozenset[int]:
     why: a font without it is not merely passed over when an application asks
     for GB2312_CHARSET, it is silently replaced. Tofu on the GBK extensions
     costs less than being unselectable.
+
+    GB2312-80 predates the euro and this build is a strict subset of the full
+    one, so `CP936_EXTRA` is added here too and the relation still holds.
     """
-    return gb2312_codepoints() | _TABULAR
+    return gb2312_codepoints() | _TABULAR | CP936_EXTRA
 
 
 @lru_cache(maxsize=None)
 def full() -> frozenset[int]:
     """Full build, GBK/CP936 level. The default product."""
-    return cp936_codepoints() | _TABULAR
+    return cp936_codepoints() | _TABULAR | CP936_EXTRA
 
 
 @lru_cache(maxsize=None)
