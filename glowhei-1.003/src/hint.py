@@ -31,10 +31,25 @@ joint invocation breaking the ideographs too. It had a stale configuration
 installed beside the toolchain, and was comparing outputs of two different
 configurations.
 
-**The upstream configuration is used unmodified**, byte for byte, and the
-sibling project uses the same file. Tuning `EmBox` to a font's own design
-measures better against a contrast metric, and that metric turned out to be the
-wrong one.
+**The upstream configuration is used unmodified except for its coverage, and
+that exception is the one thing measured against it.** Its passes are an
+allow-list of Unicode blocks - the CJK blocks, kana and Hangul - so every glyph
+outside them was handed back with no instructions at all: counted on the
+product, 592 of 22,016 inked glyphs, the whole box drawing and block element
+range among them. A glyph with no instructions cannot be grid fitted, so a
+1.12 px rule that straddles a pixel boundary stays two half lit columns where a
+fitted one snaps to a single black one - measured at 16px, minimum grey 111
+against a fitted rule's 0, and at 22px a whole frame whose verticals were grey
+and whose horizontals were black.
+
+So a fourth pass is appended: the same `hm-ideograph` model, with the same
+parameters, selecting the complement of the blocks the first three name. The
+allow-list itself is kept, because it is what holds the ideographs on the model
+that was measured for them; what changes is only that the glyphs outside it are
+no longer left bare.
+
+Tuning `EmBox` to a font's own design measures better against a contrast metric,
+and that metric turned out to be the wrong one.
 
 Needs Node and a set of npm packages inside WSL.
 Without them the step is skipped and the font ships unhinted, which is correct
@@ -42,6 +57,8 @@ but softer at small sizes.
 """
 import hashlib
 import io
+import re
+import unicodedata
 import subprocess
 import tempfile
 from pathlib import Path
@@ -127,9 +144,7 @@ def _place_config() -> None:
         raise RuntimeError(f"could not place hcfg.json: {result.stderr[-200:]!r}")
 
 
-# The alphabets ttfautohint takes, by codepoint. Everything else - ideographs,
-# kana, punctuation, box drawing, full-width forms - goes to Chlorophytum's
-# side, where its passes hint what they cover and the rest stays plain.
+# The alphabets ttfautohint takes, by codepoint.
 #
 # Split by codepoint rather than by which glyphs Chlorophytum would hint: that
 # would mean predicting the configuration's ranges here and drifting from them
@@ -142,9 +157,184 @@ LETTER_RANGES = (
     (0x0400, 0x04FF),   # Cyrillic
 )
 
+# **The tiling block is on neither side, and that is a measurement.** Three
+# arms were run and read off the rasteriser, darkest pixel at 12/16/22px:
+#
+#              | 12px | 16px | 22px | - 12px | 16px | 22px
+#   no hinting |  77  |  72  | 183  |   88   |  32  |  64
+#   hm-ideograph|   1  |  63  | 134  |  224   |  28  | 128
+#   ttfautohint|  54  | 144  | 196  |  216   |  40  | 140
+#
+# Chlorophytum's model wins the vertical rule at 12px and loses the horizontal
+# one badly - 224 is 0.12px of ink, all but invisible - and ttfautohint is
+# worse than no hinting in five of the six cells. Every parameter `hm-ideograph`
+# accepts was tried as well (stem width, fuzz, dicing, an em box matching the
+# line box) and not one of them changes a single value, so the choice is the
+# model or nothing. Nothing wins on the whole, and a frame is drawn with both
+# rules at once: one black beside one grey is the defect this started from.
+#
+# So the block is left bare and `build/hcfg.json`'s last pass excludes it, the
+# same two-halves-move-together rule as before: no glyph is hinted by two
+# models, and none is left to fall between them. The other 417 glyphs the pass
+# covers keep their instructions - they are the part that gains.
+UNHINTED_RANGES = (
+    (0x2500, 0x25FF),   # box drawing, block elements, geometric shapes
+)
+
+# **Two more, and they are classes rather than ranges because that is how they
+# fail.** Every inked codepoint outside CJK, kana and Hangul was swept at
+# 12/16/22px, hinted against bare; grouped by what the character *is* - read
+# off its own Unicode name - rather than by which block it sits in:
+#
+#   class                            n   fail   rate   worst case
+#   horizontal bar / dash / hyphen  29     8   27.6%   U+FE63 240 vs 64 at 16px
+#   small isolated mark             67     9   13.4%   U+00B8  88 vs  0 at 16px
+#   letter                         222     2    0.9%   U+0448  43 vs 23 at 12px
+#   operator / symbol               52     2    3.8%   U+2225  78 vs 48 at 12px
+#
+# The two controls - 274 letters and operators - put the noise floor at 4%, so
+# a class failing at 14% and 28% is not one bad glyph, it is the model failing
+# on a shape: a thin isolated bar or mark, exactly what it also failed on in
+# the tiling block. Both are held out for now.
+#
+# **Held out, not ruled out.** This says the one model available *today* is a
+# net loss on these two shapes at these three sizes; it does not say they
+# cannot be hinted. Anyone bringing a hinter built for them should read this as
+# the measurements to beat, not as a decision that they are unhintable.
+# **The rule is whole classes, not points.** A codepoint is held out only as a
+# member of one of the classes below; `UNHINTED_SYMBOLS` is generated from them
+# and a test asserts the two agree in both directions, so nobody can add a
+# single codepoint to the list without holding out the class it belongs to.
+# That is deliberate: a class held out a member at a time renders one bar
+# hinted and the bar beside it bare, which is the inconsistency the whole
+# exercise exists to remove.
+#
+# The members are listed rather than matched at run time because the other half
+# of this lives in `hcfg.json` and Chlorophytum's selector understands ranges
+# and nothing else. `_members_of_class` re-derives this list from the names; a
+# test compares the two.
+CLASS_PATTERNS = (
+    re.compile(r"HYPHEN|DASH|MACRON|HORIZONTAL BAR|MINUS SIGN|LOW LINE"
+               r"|OVERLINE"),
+    re.compile(r"FULL STOP|MIDDLE DOT|BULLET|CEDILLA|DIAERESIS|DEGREE SIGN"
+               r"|RING ABOVE|APOSTROPHE|QUOTATION MARK|OGONEK|CARON"
+               r"|SMALL (FULL STOP|HYPHEN)|COMMA|ACCENT"),
+)
+# Read the name through this first: a letter named for its accent is a letter.
+SCRIPT_PREFIX = re.compile(
+    r"^(LATIN|GREEK|CYRILLIC|CJK|HIRAGANA|KATAKANA|HANGUL|BOPOMOFO)")
+
+
+def class_of(codepoint: int) -> str | None:
+    """Which held-out class this codepoint belongs to, or None."""
+    if _claimed(codepoint):
+        return None
+    name = unicodedata.name(chr(codepoint), "")
+    if SCRIPT_PREFIX.search(name):
+        return None
+    for index, pattern in enumerate(CLASS_PATTERNS):
+        if pattern.search(name):
+            return ("horizontal bar / dash", "small mark")[index]
+    return None
+
+
+def class_members(codepoints) -> tuple[int, ...]:
+    """Every member of every held-out class in `codepoints`."""
+    return tuple(sorted(cp for cp in codepoints if class_of(cp)))
+
+
+def hold_out_faults(codepoints, is_bare=None) -> list[str]:
+    """Classes held out a member at a time, as messages.
+
+    **A class is held out whole or not at all.** Holding out the two members
+    that measured worst and leaving their neighbours hinted would render one
+    bar black and the bar beside it grey - the inconsistency this whole line of
+    work exists to remove - and it is what a list built by adding points
+    gradually turns into. Both directions are checked: a class member that is
+    not held out, and a held-out codepoint that belongs to no class at all.
+
+    `is_bare` defaults to `_is_bare`; the parameter is there so the rule can be
+    shown to bite on a list that breaks it.
+    """
+    is_bare = is_bare or _is_bare
+    faults = []
+    members = class_members(codepoints)
+    by_class = {}
+    for cp in members:
+        by_class.setdefault(class_of(cp), []).append(cp)
+    for name in sorted(by_class):
+        held = [cp for cp in by_class[name] if is_bare(cp)]
+        if held and len(held) != len(by_class[name]):
+            missing = [cp for cp in by_class[name] if not is_bare(cp)]
+            faults.append(
+                f"class {name!r} is held out for {len(held)} of "
+                f"{len(by_class[name])} members; still hinted: "
+                + ", ".join(f"U+{cp:04X}" for cp in missing[:6]))
+    for cp in sorted(cp for cp in codepoints if is_bare(cp)):
+        if class_of(cp) is None and not any(
+                lo <= cp <= hi for lo, hi in UNHINTED_RANGES):
+            faults.append(f"U+{cp:04X} is held out and belongs to no class")
+    return faults
+UNHINTED_SYMBOLS = UNHINTED_RANGES + (
+    (0x0022, 0x0022),
+    (0x0027, 0x0027),
+    (0x002C, 0x002E),
+    (0x005E, 0x0060),
+    (0x00A8, 0x00A8),
+    (0x00AB, 0x00AB),
+    (0x00AD, 0x00AD),
+    (0x00AF, 0x00B1),
+    (0x00B4, 0x00B4),
+    (0x00B7, 0x00B8),
+    (0x00BB, 0x00BB),
+    (0x02C6, 0x02C7),
+    (0x02C9, 0x02CB),
+    (0x2010, 0x2010),
+    (0x2013, 0x2015),
+    (0x2018, 0x201A),
+    (0x201C, 0x201E),
+    (0x2022, 0x2022),
+    (0x2039, 0x203A),
+    (0x2488, 0x249B),
+    (0xFE50, 0xFE52),
+    (0xFE63, 0xFE63),
+)
+
+# What the three upstream passes own. Nothing here is ever held out: they are
+# the passes that were measured and chosen for these scripts.
+CLAIMED_BY_CHLOROPHYTUM = (
+    (0x2E80, 0x2EFF), (0x2F00, 0x2FDF), (0x3000, 0x303F), (0x3040, 0x309F),
+    (0x30A0, 0x30FF), (0x3100, 0x312F), (0x3130, 0x318F), (0x31A0, 0x31BF),
+    (0x31F0, 0x31FF), (0x3200, 0x32FF), (0x3300, 0x33FF), (0x3400, 0x4DBF),
+    (0x4E00, 0x9FFF), (0xA000, 0xA48F), (0xAC00, 0xD7AF), (0xF900, 0xFAFF),
+    (0xFE30, 0xFE4F), (0xFF00, 0xFFEF),
+)
+
+
+def _claimed(codepoint: int) -> bool:
+    return any(lo <= codepoint <= hi for lo, hi in CLAIMED_BY_CHLOROPHYTUM)
+
 
 def _is_letter(codepoint: int) -> bool:
     return any(lo <= codepoint <= hi for lo, hi in LETTER_RANGES)
+
+
+def _goes_to_ttfautohint(codepoint: int) -> bool:
+    """The letters. The tiling block is on neither side; see UNHINTED_SYMBOLS."""
+    return _is_letter(codepoint)
+
+
+def _is_bare(codepoint: int) -> bool:
+    """Held out of hinting for now, because the model measured a net loss.
+
+    Only shapes the model was measured to fail on: a range it fails on whole
+    (box drawing and friends), or a member of one of the two classes the sweep
+    found it failing a fifth to a third of the time. Never anything the three
+    upstream passes own.
+    """
+    if _claimed(codepoint):
+        return False
+    return any(lo <= codepoint <= hi for lo, hi in UNHINTED_SYMBOLS)
 
 
 def ttfautohint_available() -> bool:
@@ -286,8 +476,15 @@ def apply(font: TTFont, workdir: Path | None = None,
     _place_config()
 
     covered = set(font.getBestCmap())
-    letters = {cp for cp in covered if _is_letter(cp)}
-    rest = covered - letters
+    # The held-out set wins over both sides: `LETTER_RANGES` is a range, and a
+    # range cannot express "these two letters are fine and these two marks are
+    # not", so the classes have to be able to take a codepoint out of it.
+    # Missing this half left the ASCII punctuation held out of Chlorophytum and
+    # still hinted by ttfautohint, which is the hole the two-halves rule exists
+    # to prevent.
+    letters = {cp for cp in covered
+               if _goes_to_ttfautohint(cp) and not _is_bare(cp)}
+    rest = {cp for cp in covered if not _is_bare(cp)} - letters
     if not letters or not rest or not ttfautohint_available():
         letters, rest = set(), covered
 

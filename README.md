@@ -15,8 +15,8 @@
 
 | 目录 / 文件 | 内容 | 许可 |
 |---|---|---|
-| `glowhei-1.002/` | 三个字体文件与全部构建源码 | SIL OFL 1.1 |
-| `sbitgraft-1.002/` | 去掉 hinting 的工具，单个 C 文件 | MIT |
+| `glowhei-1.003/` | 三个字体文件与全部构建源码 | SIL OFL 1.1 |
+| `sbitgraft-1.003/` | 去掉 hinting 的工具，单个 C 文件 | MIT |
 | `65-glowhei.conf`、`check-fontconfig.sh` | fontconfig 配置与自查脚本 | CC0 1.0 |
 | `APPENDIX-toolkits.md` | 各桌面工具包行为的实测记录（英文） | CC0 1.0 |
 
@@ -27,7 +27,7 @@
 Linux：
 
 ```sh
-FONT=glowhei-1.002
+FONT=glowhei-1.003
 
 mkdir -p ~/.local/share/fonts ~/.config/fontconfig/conf.d
 cp "$FONT"/GlowHei-GBK.ttc "$FONT"/GlowHei-ExtA.ttf ~/.local/share/fonts/
@@ -38,7 +38,7 @@ fc-cache -f
 `fc-cache -f` 不能省。配置用一条扫描期规则修正等宽分类，而字体列表建自扫描缓存，
 不重建缓存的话旧判定会留着。
 
-Windows：右键安装 `glowhei-1.002/` 里的 TTC。
+Windows：右键安装 `glowhei-1.003/` 里的 TTC。
 
 ## fontconfig 配置管三件事
 
@@ -64,7 +64,7 @@ Windows：右键安装 `glowhei-1.002/` 里的 TTC。
 ## 许可
 
 字体与构建源码为 SIL OFL 1.1，全文见 `LICENSE`，上游声明也在其中。fontconfig 那两个
-文件与技术附录是 CC0，全文见 `LICENSE-CC0`，抄走改用不必署名。`sbitgraft-1.002/`
+文件与技术附录是 CC0，全文见 `LICENSE-CC0`，抄走改用不必署名。`sbitgraft-1.003/`
 是 MIT，全文见该目录下的 `LICENSE`。
 
 字体的 `fpgm` 表内含 Chlorophytum 的运行时函数库，该工具为 MIT，全文见

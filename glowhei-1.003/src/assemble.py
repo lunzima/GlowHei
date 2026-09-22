@@ -10,7 +10,8 @@ from pathlib import Path
 from fontTools.ttLib import TTCollection, TTFont
 from fontTools.ttLib.scaleUpem import scale_upem
 
-from build import decompose, ffsimplify, hint, metrics, refit, sarasa
+from build import (charset, decompose, ffsimplify, hansans, hint, metrics,
+                   refit, sarasa)
 
 UPEM = 256
 
@@ -19,7 +20,21 @@ def build_outlines(codepoints, *, use_fontforge: bool = True,
                    workdir: Path | None = None) -> TTFont:
     """Steps 1 to 5: from the source font to finished outlines at upem 256."""
     font = sarasa.subset(sarasa.open_source(), codepoints)
+    # Composite glyphs are flattened *before* the transplant, and the order is
+    # load bearing. Accented letters are built from these codepoints: `Agrave`
+    # is `A` plus U+02CB, `i` is `dotlessi` plus U+02D9, and 222 composites in
+    # the source reference one of the thirty. Flattening after the transplant
+    # would hand every one of them a full-width accent on a half-width letter -
+    # measured, `Egrave` came out 50 units past its advance.
     decompose.decompose(font)
+    # The one step that does not come from the Sarasa subset. Two batches are
+    # half width in that source and full width by the rule this project decides
+    # a width by - thirty CP936 symbols, and the box drawing, block elements
+    # and geometric shapes - so both their outline and their advance are
+    # replaced here, before anything is scaled or simplified; `hansans` says
+    # why, and why the second batch is seated differently. It is a no-op for a
+    # charset without them, which is Ext A.
+    hansans.adopt(font, charset.CP936_SYMBOLS | charset.TABULAR_SYMBOLS)
     scale_upem(font, UPEM)
     if use_fontforge and ffsimplify.available():
         ffsimplify.simplify(font, workdir=workdir)
