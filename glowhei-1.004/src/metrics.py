@@ -180,7 +180,7 @@ def ink_extent(font: TTFont) -> tuple[int, int]:
 def win_metrics(font: TTFont) -> tuple[int, int, int]:
     """Return (usWinAscent, usWinDescent, lineGap), checking the ink fits.
 
-    **The win metrics must cover every bit of ink**, because Windows clips to
+    The win metrics must cover every bit of ink, because Windows clips to
     them. Here they are fixed rather than computed: the design settles the
     line box and `refit` is what makes the ink fit it, so this is the place
     that catches a glyph `refit` missed. Growing the box instead would

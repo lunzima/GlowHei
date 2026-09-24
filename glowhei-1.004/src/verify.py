@@ -46,7 +46,7 @@ SIZE_BUDGET_MB = {
 # corrected. The check still holds them to the measured figure, so
 # a regression on these glyphs fails like any other.
 #
-# **Nine entries have left this table, all of them as a repair landed.** The
+# Nine entries have left this table, all of them as a repair landed. The
 # first four went with the thirty half-width symbols - U+2197, U+2198, U+25BC
 # and U+25BD overhung by 1.3 units because the source drew them into a 500
 # unit cell and the ink ran five units past it. These five went with the
@@ -98,7 +98,7 @@ def _is_mono(font: TTFont) -> bool:
 def check_metrics(font: TTFont, rep: Report) -> None:
     """Metrics must match the design.
 
-    **`sTypo*` and `hhea` assert different things and must not be conflated.**
+    `sTypo*` and `hhea` assert different things and must not be conflated.
     `sTypo*` is design intent, fixed at the reference face's 220/-36. `hhea`
     follows the
     Windows convention and equals the win metrics computed from the *actual*
@@ -276,8 +276,8 @@ def check_widths(font: TTFont, rep: Report) -> None:
     checks that nothing in the pipeline disturbed it rather than that anything
     achieved it.
 
-    **The tabular block is asserted by name, and that addition is what the
-    earlier version of this check could not see.** `{128, 256}` says an advance
+    The tabular block is asserted by name, and that addition is what the
+    earlier version of this check could not see. `{128, 256}` says an advance
     is one of two widths, not that it is the right one of the two, so the 175
     box drawing, block element and geometric characters sat half width through
     every green run of this function. They are named in `charset` and the rule
@@ -363,8 +363,8 @@ def _tiling_edges(codepoint: int) -> frozenset[str]:
 
 # How thick a rule has to be to render as a rule, in upem-256 units.
 #
-# **This is the check that measures weight rather than geometry, and it is here
-# because the geometry check could not see the defect.** A rule whose ink
+# This is the check that measures weight rather than geometry, and it is here
+# because the geometry check could not see the defect. A rule whose ink
 # reaches both cell edges can still be a ghost: at 0.64 px the rasteriser does
 # not draw a thin line, it draws two half lit columns, and a frame whose
 # verticals are grey and whose horizontals are black reads as broken. Measured
@@ -529,7 +529,7 @@ def check_diagonal_weight(font: TTFont, rep: Report) -> None:
 def check_hinting_coverage(font: TTFont, rep: Report) -> None:
     """Every glyph that draws ink must carry instructions.
 
-    **This is the debt the rest of this file was built around.** The hinter is
+    This is the debt the rest of this file was built around. The hinter is
     fed a font and asks a configuration which glyphs to hint; that
     configuration is an allow-list of Unicode blocks - the CJK blocks, kana
     and Hangul - so everything outside them came back bare: 592 glyphs of the
@@ -539,8 +539,8 @@ def check_hinting_coverage(font: TTFont, rep: Report) -> None:
     ghost a rendered frame caught and no geometric check could.
 
     A glyph with no ink is exempt: there is nothing to fit. So is `.notdef`,
-    which the hinter never sees. **And so is the tiling block, which is bare by
-    measurement**: three arms were run on the rasteriser and no model renders a
+    which the hinter never sees. And so is the tiling block, which is bare by
+    measurement: three arms were run on the rasteriser and no model renders a
     rule better than leaving it alone - `hm-ideograph` takes the horizontal
     rule at 12px to 224, and ttfautohint is worse than bare in five of six
     cells - so the block is excluded from both sides on purpose. The exemption

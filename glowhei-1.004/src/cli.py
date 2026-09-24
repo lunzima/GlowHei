@@ -37,10 +37,10 @@ def build_target(name: str, *, use_fontforge: bool = True,
 
     if len(specs) == 2:
         collection = assemble.build_pair(charset_fn(), specs[0], specs[1],
-                                         **options)
+                                         options)
         return out, assemble.save_ttc(collection, out), len(collection.fonts)
 
-    font = assemble.build_single(charset_fn(), specs[0], **options)
+    font = assemble.build_single(charset_fn(), specs[0], options)
     out.parent.mkdir(parents=True, exist_ok=True)
     font.save(str(out))
     return out, out.stat().st_size, 1

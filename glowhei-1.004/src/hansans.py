@@ -16,8 +16,8 @@ have their y mapped onto this project's line box, where the geometric shapes
 are seated like any other symbol. `TILING` and the constants under it carry the
 measurements.
 
-**And their strokes have to be re-weighed, which the first attempt at this
-missed and a rendered frame caught.** The source draws a rule 40 units thick
+And their strokes have to be re-weighed, which the first attempt at this
+missed and a rendered frame caught. The source draws a rule 40 units thick
 where this project's own face drew it at 70 and the reference face at 74; 40
 units is 0.64 px at 16px, and a sub-pixel rule renders as two half-lit columns
 rather than a line. The geometry was right and the frame still looked broken.
@@ -28,7 +28,7 @@ measured on the source, the ink of U+25BC is 0.510 em and of U+25E2 0.420 em,
 against Han ink of about 0.94 - so a half-cell glyph in a full cell reads as a
 small light character beside the Han. The design has to change with the metric.
 
-**Source Han Sans is where the design comes from, and it is the same hand.**
+Source Han Sans is where the design comes from, and it is the same hand.
 Sarasa Gothic is Iosevka latin over Source Han Sans CJK, so the glyphs this
 module transplants are drawn by the same typeface the rest of the product's CJK
 already is.
@@ -43,7 +43,7 @@ centred in it. Centring is close to a no-op for the other twenty-six: measured,
 the largest shift it asks of them is 26 units, and the four quadrant blocks
 U+25E2 to U+25E5 measure ink 0..1000 and do not move at all.
 
-**Source Han Serif would not do**, though the sibling project uses it: this face
+Source Han Serif would not do, though the sibling project uses it: this face
 is a sans, and the sibling's serif shapes would sit wrong against the Han here.
 
 The transplant crosses from CFF to TrueType, so the winding has to be brought
@@ -96,7 +96,7 @@ IDEOGRAPHIC_COMMA = 0x3001
 # `charset.TILING_SYMBOLS`; what follows is why it is seated differently.
 TILING = charset.TILING_SYMBOLS
 
-# **A tiling glyph cannot be seated the way the other thirty were.** Measured
+# A tiling glyph cannot be seated the way the other thirty were. Measured
 # on the thirty, 71 of these have ink that is not symmetric about the cell -
 # U+250C runs from x 480 to 1000, U+258C from 0 to 500, U+2595 from 875 to 1000
 # - so centring one moves it off the edge it exists to meet, which is exactly
@@ -120,8 +120,8 @@ TILING_CELL = (-285.0, 965.0)
 TILING_SCALE_Y = (TILING_CELL[1] - TILING_CELL[0]) / (SOURCE_CELL[1] - SOURCE_CELL[0])
 TILING_SHIFT_Y = TILING_CELL[0] - SOURCE_CELL[0] * TILING_SCALE_Y
 
-# **And the strokes are half the weight they need to be, which is the half of
-# this that geometry alone does not show.** Measured across every font in play,
+# And the strokes are half the weight they need to be, which is the half of
+# this that geometry alone does not show. Measured across every font in play,
 # the light rule is 40 units in Source Han Sans and 70 in Sarasa, 74 in the
 # reference face this project measures against, and 40 in the sibling project.
 # 40 units is 0.04 em: 0.64 px at 16px and 0.88 px at 22px, which is *sub
@@ -162,8 +162,8 @@ TARGET_DOUBLE_HALF = 105.0              # two 70 unit bars, 70 apart
 # still reaches the edge it has to reach.
 HALF_CELL = 500.0
 
-# **Three shapes in this block carry no stroke on either axis, and the axis
-# map cannot reach them.** The three diagonals are bands running corner to
+# Three shapes in this block carry no stroke on either axis, and the axis
+# map cannot reach them. The three diagonals are bands running corner to
 # corner - measured on the shipped product at a perpendicular width of 41.8
 # units, against the 70 the rules now weigh, because the source draws them at
 # its own 40 unit weight and no axis of theirs holds a stroke edge. The
@@ -256,8 +256,8 @@ def _wound_clockwise(glyph_set, name: str) -> bool:
     """Whether the glyph's outer contour runs clockwise.
 
     TrueType winds outers clockwise and CFF counter-clockwise, so the product
-    wants clockwise and anything else has to be flipped on the way in. **The
-    flip cannot be decided once for the whole source**, which is what the
+    wants clockwise and anything else has to be flipped on the way in. The
+    flip cannot be decided once for the whole source, which is what the
     project's own pipeline would normally do: measured over the thirty, Source
     Han Sans's own CFF is not wound consistently - the two spacing accents and
     the emphasis dot arrive clockwise while the en dash, the arrow and the

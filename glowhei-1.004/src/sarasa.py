@@ -1,6 +1,6 @@
 """Locating the source font, checking it, and cutting it to a charset.
 
-The source is Sarasa Fixed SC Regular, taken from the **Unhinted** archive.
+The source is Sarasa Fixed SC Regular, taken from the Unhinted archive.
 Hinting is dropped on subsetting regardless of which archive the file came
 from: TrueType instructions are bound to point indices, and both the upem
 rescale and the simplify pass move points. Instructions that survived would
